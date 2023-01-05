@@ -1,0 +1,19 @@
+[package]
+name = "illuvium-land-rust"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "illuvium-land-runner"
+path = "src/main.rs"
+
+[dependencies]
+log = "0.4.0"
+env_logger = "0.10.0"
+reqwest = { version = "0.11", features = ["json"] }
+tokio = { version = "1", features = ["full"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+chrono = "0.4.23"
+teloxide = { version = "0.11.3", features = ["macros"] }
+resvg = "0.28.0"
