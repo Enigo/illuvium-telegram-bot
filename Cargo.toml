@@ -12,8 +12,10 @@ log = "0.4.0"
 env_logger = "0.10.0"
 reqwest = { version = "0.11", features = ["json"] }
 tokio = { version = "1.24.2", features = ["full"] }
+futures = "0.3.25"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 chrono = "0.4.23"
 teloxide = { version = "0.12.0", features = ["macros"] }
+rand = "0.8.5"
 resvg = "0.28.0"

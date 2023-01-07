@@ -1,5 +1,7 @@
 use chrono::{DateTime, Duration, Utc};
-use log::info;
+use futures::future::join_all;
+use log::{error, info};
+use tokio::task;
 
 use crate::model::{order::*, token::Token};
 use crate::telegram_bot_sender;
@@ -10,53 +12,54 @@ const ORDERS_URL: &str = "https://api.x.immutable.com/v1/orders?status=active&se
 const TOKEN_URL: &str = "https://api.x.immutable.com/v1/assets/0x9e0d99b864e1ac12565125c5a82b59adea5a09cd/";
 
 #[tokio::main]
-pub async fn read_orders() -> Result<(), Box<dyn std::error::Error>> {
+pub async fn read_orders() {
     let response = reqwest::get(ORDERS_URL)
-        .await?
-        .text()
-        .await?;
+        .await.unwrap().text()
+        .await.unwrap();
 
     let result = serde_json::from_str::<Order>(&response);
 
     match result {
         Ok(order) => {
-            return process_order(order)
-                .await;
+            info!("Processing order response");
+            let mut futures = vec![];
+            for result in order.result {
+                let future = task::spawn(process_order(result));
+                futures.push(future);
+            }
+
+            join_all(futures).await;
         }
         Err(e) => {
-            panic!("Orders API response cannot be parsed! {}", e)
+            error!("Orders API response cannot be parsed! {}", e)
         }
     };
 }
 
-async fn process_order(order: Order) -> Result<(), Box<dyn std::error::Error>> {
-    info!("Processing order response");
-    for result in order.result {
-        let timestamp = DateTime::parse_from_rfc3339(&result.timestamp).unwrap();
-        let for_last_minutes = 1;
-        let last_minute = Utc::now() - Duration::minutes(for_last_minutes);
-        let is_after = timestamp > last_minute;
+async fn process_order(result: TheResult) {
+    let timestamp = DateTime::parse_from_rfc3339(&result.timestamp).unwrap();
+    let for_last_minutes = 1;
+    let last_minute = Utc::now() - Duration::minutes(for_last_minutes);
+    let is_after = timestamp > last_minute;
 
-        if is_after {
-            let response = reqwest::get(TOKEN_URL.to_owned() + &result.sell.data.id)
-                .await?
-                .text()
-                .await?;
-            let parse_result = serde_json::from_str::<Token>(&response);
+    if is_after {
+        info!("Newly listed land detected");
+        let response = reqwest::get(TOKEN_URL.to_owned() + &result.sell.data.id)
+            .await.unwrap()
+            .text().await.unwrap();
+        let parse_result = serde_json::from_str::<Token>(&response);
 
-            match parse_result {
-                Ok(token) => {
-                    let buy = result.buy;
-                    telegram_bot_sender::send(token.metadata, get_price(buy.data), buy.the_type)
-                        .await?;
-                }
-                Err(e) => {
-                    panic!("Token API response cannot be parsed! {}", e)
-                }
-            };
-        }
+        match parse_result {
+            Ok(token) => {
+                let buy = result.buy;
+                telegram_bot_sender::send(token.metadata, get_price(buy.data), buy.the_type)
+                    .await;
+            }
+            Err(e) => {
+                error!("Token API response cannot be parsed! {}", e)
+            }
+        };
     }
-    Ok(())
 }
 
 fn get_price(data: BuyData) -> f32 {
