@@ -1,7 +1,7 @@
 use serde::{Deserialize};
 
 #[derive(Deserialize, Debug)]
-pub struct Token {
+pub struct Asset {
     pub metadata: Metadata,
 }
 

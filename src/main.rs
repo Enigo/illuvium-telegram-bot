@@ -1,5 +1,3 @@
-extern crate core;
-
 use new_listing_api_reader::read_orders;
 
 mod new_listing_api_reader;

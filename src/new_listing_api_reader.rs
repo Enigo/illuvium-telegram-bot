@@ -3,13 +3,13 @@ use futures::future::join_all;
 use log::{error, info};
 use tokio::task;
 
-use crate::model::{order::*, token::Token};
+use crate::model::{order::*, asset::Asset};
 use crate::telegram_bot_sender;
 
 // max page_size=200
 // cursor can be used to fetch the data from the beginning
 const ORDERS_URL: &str = "https://api.x.immutable.com/v1/orders?status=active&sell_token_address=0x9e0d99b864e1ac12565125c5a82b59adea5a09cd";
-const TOKEN_URL: &str = "https://api.x.immutable.com/v1/assets/0x9e0d99b864e1ac12565125c5a82b59adea5a09cd/";
+const ASSET_URL: &str = "https://api.x.immutable.com/v1/assets/0x9e0d99b864e1ac12565125c5a82b59adea5a09cd/";
 
 #[tokio::main]
 pub async fn read_orders() {
@@ -44,19 +44,19 @@ async fn process_order(result: TheResult) {
 
     if is_after {
         info!("Newly listed land detected");
-        let response = reqwest::get(TOKEN_URL.to_owned() + &result.sell.data.id)
+        let response = reqwest::get(ASSET_URL.to_owned() + &result.sell.data.id)
             .await.unwrap()
             .text().await.unwrap();
-        let parse_result = serde_json::from_str::<Token>(&response);
+        let parse_result = serde_json::from_str::<Asset>(&response);
 
         match parse_result {
-            Ok(token) => {
+            Ok(asset) => {
                 let buy = result.buy;
-                telegram_bot_sender::send(token.metadata, get_price(buy.data), buy.the_type)
+                telegram_bot_sender::send(asset.metadata, get_price(buy.data), buy.the_type)
                     .await;
             }
             Err(e) => {
-                error!("Token API response cannot be parsed! {}", e)
+                error!("Asset API response cannot be parsed! {}", e)
             }
         };
     }
