@@ -3,7 +3,7 @@ use futures::future::join_all;
 use log::{error, info};
 use tokio::task;
 
-use crate::model::{order::*, asset::Asset};
+use crate::model::{asset::Asset, order::*};
 use crate::telegram_bot_sender;
 
 // max page_size=200
@@ -13,13 +13,11 @@ const ASSET_URL: &str = "https://api.x.immutable.com/v1/assets/0x9e0d99b864e1ac1
 
 #[tokio::main]
 pub async fn read_orders() {
-    let response = reqwest::get(ORDERS_URL)
-        .await.unwrap().text()
-        .await.unwrap();
+    let order_result = reqwest::get(ORDERS_URL)
+        .await.unwrap().json::<Order>()
+        .await;
 
-    let result = serde_json::from_str::<Order>(&response);
-
-    match result {
+    match order_result {
         Ok(order) => {
             info!("Processing order response");
             let mut futures = vec![];
@@ -44,10 +42,9 @@ async fn process_order(result: TheResult) {
 
     if is_after {
         info!("Newly listed land detected");
-        let response = reqwest::get(ASSET_URL.to_owned() + &result.sell.data.id)
-            .await.unwrap()
-            .text().await.unwrap();
-        let parse_result = serde_json::from_str::<Asset>(&response);
+        let parse_result = reqwest::get(ASSET_URL.to_owned() + &result.sell.data.id)
+            .await.unwrap().json::<Asset>()
+            .await;
 
         match parse_result {
             Ok(asset) => {

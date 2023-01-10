@@ -682,7 +682,6 @@ dependencies = [
  "reqwest",
  "resvg",
  "serde",
- "serde_json",
  "teloxide",
  "tokio",
 ]
