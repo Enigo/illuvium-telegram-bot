@@ -1,6 +1,7 @@
 use chrono::{DateTime, Duration, Utc};
 use futures::future::join_all;
 use log::{error, info};
+use serde::de::DeserializeOwned;
 use tokio::task;
 
 use crate::model::{asset::Asset, order::*};
@@ -13,11 +14,8 @@ const ASSET_URL: &str = "https://api.x.immutable.com/v1/assets/0x9e0d99b864e1ac1
 
 #[tokio::main]
 pub async fn read_orders() {
-    let order_result = reqwest::get(ORDERS_URL)
-        .await.unwrap().json::<Order>()
-        .await;
-
-    match order_result {
+    let response = fetch_api_response::<Order>(ORDERS_URL).await;
+    match response {
         Ok(order) => {
             info!("Processing order response");
             let mut futures = vec![];
@@ -42,11 +40,8 @@ async fn process_order(result: TheResult) {
 
     if is_after {
         info!("Newly listed land detected");
-        let parse_result = reqwest::get(ASSET_URL.to_owned() + &result.sell.data.id)
-            .await.unwrap().json::<Asset>()
-            .await;
-
-        match parse_result {
+        let response = fetch_api_response::<Asset>(&*(ASSET_URL.to_owned() + &result.sell.data.id)).await;
+        match response {
             Ok(asset) => {
                 let buy = result.buy;
                 telegram_bot_sender::send(asset.metadata, get_price(buy.data), buy.the_type)
@@ -57,6 +52,13 @@ async fn process_order(result: TheResult) {
             }
         };
     }
+}
+
+async fn fetch_api_response<T: DeserializeOwned>(endpoint: &str) -> reqwest::Result<T> {
+    let result = reqwest::get(endpoint)
+        .await?.json::<T>()
+        .await?;
+    return Ok(result);
 }
 
 fn get_price(data: BuyData) -> f32 {
