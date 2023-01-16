@@ -44,7 +44,7 @@ async fn process_order(result: TheResult) {
         match response {
             Ok(asset) => {
                 let buy = result.buy;
-                telegram_bot_sender::send(asset.metadata, get_price(buy.data), buy.the_type)
+                telegram_bot_sender::send(asset.metadata, buy)
                     .await;
             }
             Err(e) => {
@@ -59,17 +59,4 @@ async fn fetch_api_response<T: DeserializeOwned>(endpoint: &str) -> reqwest::Res
         .await?.json::<T>()
         .await?;
     return Ok(result);
-}
-
-fn get_price(data: BuyData) -> f32 {
-    let index_of_comma = data.quantity.chars().count() - <i32 as TryInto<usize>>::try_into(data.decimals).unwrap();
-
-    return match index_of_comma {
-        0 => ("0.".to_owned() + &data.quantity).parse().unwrap(),
-        _ => {
-            let mut quantity_clone = data.quantity.clone();
-            quantity_clone.insert(index_of_comma, '.');
-            return quantity_clone.parse().unwrap();
-        }
-    };
 }
