@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::fs;
+use std::{env, fs};
 use std::io::ErrorKind;
 use std::path::Path;
 
@@ -13,19 +13,18 @@ use crate::model::asset::Metadata;
 use crate::model::order::{Buy, BuyData};
 
 const USER_AGENT_VALUE: &str = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36";
-const BOT_TOKEN: &str = "<>"; // insert correct one
-const CHAT_ID: i64 = 123; // insert correct one
 
 pub async fn send(metadata: Metadata, buy: Buy) {
     let message = build_message(&metadata, buy);
-    let bot = Bot::new(BOT_TOKEN);
+    let bot = Bot::new(env::var("BOT_TOKEN").expect("BOT_TOKEN should be set"));
     let file_name = &format!("/tmp/{}.png", Alphanumeric.sample_string(&mut rand::thread_rng(), 16));
     let path = Path::new(file_name);
+    let chat_id = ChatId(env::var("CHAT_ID").expect("CHAT_ID should be set").parse().expect("CHAT_ID should be a valid i64 value"));
 
     match process_image(&metadata.image_url, path).await {
         Ok(_) => {
             info!("Sending photo to telegram");
-            match bot.send_photo(ChatId(CHAT_ID), InputFile::file(path)).caption(message).await
+            match bot.send_photo(chat_id, InputFile::file(path)).caption(message).await
             {
                 Ok(message) => info!("Photo sent successfully {:?}", message.id),
                 Err(e) => warn!("Photo wasn't sent because of: {}", e)
@@ -40,7 +39,7 @@ pub async fn send(metadata: Metadata, buy: Buy) {
         }
         Err(e) => {
             warn!("Couldn't generate image because of `{}`, falling back to text message", e);
-            match bot.send_message(ChatId(CHAT_ID), message).await
+            match bot.send_message(chat_id, message).await
             {
                 Ok(message) => info!("Text message sent successfully {:?}", message.id),
                 Err(e) => warn!("Text message wasn't sent because of: {}", e)
