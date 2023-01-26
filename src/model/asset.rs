@@ -1,7 +1,9 @@
-use serde::{Deserialize};
+use serde::Deserialize;
 
 #[derive(Deserialize, Debug)]
 pub struct Asset {
+    pub token_address: String,
+    pub token_id: String,
     pub metadata: Metadata,
 }
 

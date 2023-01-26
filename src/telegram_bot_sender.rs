@@ -1,7 +1,7 @@
 use std::collections::HashMap;
-use std::{env, fs};
 use std::io::ErrorKind;
 use std::path::Path;
+use std::{env, fs};
 
 use log::{debug, info, warn};
 use rand::distributions::{Alphanumeric, DistString};
@@ -9,19 +9,20 @@ use resvg::{tiny_skia, usvg::{FitTo, Options, Tree}};
 use teloxide::prelude::*;
 use teloxide::types::InputFile;
 
-use crate::model::asset::Metadata;
+use crate::model::asset::Asset;
 use crate::model::order::{Buy, BuyData};
 
 const USER_AGENT_VALUE: &str = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36";
+const ILLUVIDEX_ASSET_URL: &str = "https://illuvidex.illuvium.io/asset";
 
-pub async fn send(metadata: Metadata, buy: Buy) {
-    let message = build_message(&metadata, buy);
+pub async fn send(asset: &Asset, buy: Buy) {
+    let message = build_message(asset, buy);
     let bot = Bot::new(env::var("BOT_TOKEN").expect("BOT_TOKEN should be set"));
     let file_name = &format!("/tmp/{}.png", Alphanumeric.sample_string(&mut rand::thread_rng(), 16));
     let path = Path::new(file_name);
     let chat_id = ChatId(env::var("CHAT_ID").expect("CHAT_ID should be set").parse().expect("CHAT_ID should be a valid i64 value"));
 
-    match process_image(&metadata.image_url, path).await {
+    match process_image(asset.metadata.image_url.as_str(), path).await {
         Ok(_) => {
             info!("Sending photo to telegram");
             match bot.send_photo(chat_id, InputFile::file(path)).caption(message).await
@@ -48,18 +49,26 @@ pub async fn send(metadata: Metadata, buy: Buy) {
     }
 }
 
-fn build_message(metadata: &Metadata, buy: Buy) -> String {
+fn build_message(asset: &Asset, buy: Buy) -> String {
+    let metadata = &asset.metadata;
     let price = get_price(buy.data);
-    let token_type = HashMap::from([
-        (String::from("ERC20"), String::from("USDC"))
-    ]);
+    let token_type = HashMap::from([(String::from("ERC20"), String::from("USDC"))]);
     let token = token_type.get(&buy.the_type).map_or("ETH", String::as_str);
 
-    "T".to_owned() + &metadata.tier.to_string() + " " + &metadata.name
-        + " price: " + &price.to_string() + token + " landmark: " + &metadata.landmark
-        + " hydrogen:" + &metadata.hydrogen.to_string() + " carbon:" + &metadata.carbon.to_string()
-        + " silicon:" + &metadata.silicon.to_string() + " solon:" + &metadata.solon.to_string()
-        + " crypton:" + &metadata.crypton.to_string() + " hyperion:" + &metadata.hyperion.to_string()
+    let (tier, name, landmark,
+        hydrogen, carbon, silicon,
+        solon, crypton, hyperion,
+        url
+    ) = (&metadata.tier, &metadata.name, &metadata.landmark,
+         &metadata.hydrogen, &metadata.carbon, &metadata.silicon,
+         &metadata.solon, &metadata.crypton, &metadata.hyperion,
+         format!("{}/{}/{}", ILLUVIDEX_ASSET_URL, asset.token_address, asset.token_id)
+    );
+
+    format!("T{tier} {name}\nprice: {price}{token}\nlandmark: {landmark}\
+    \nhydrogen: {hydrogen} carbon: {carbon} silicon: {silicon}\
+    \nsolon: {solon} crypton: {crypton} hyperion: {hyperion}\
+    \n{url}")
 }
 
 fn get_price(data: BuyData) -> f32 {
@@ -75,8 +84,8 @@ fn get_price(data: BuyData) -> f32 {
     };
 }
 
-async fn process_image(image_url: &String, path: &Path) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    let image_url = reqwest::Url::parse(&image_url)?;
+async fn process_image(image_url: &str, path: &Path) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    let image_url = reqwest::Url::parse(image_url)?;
     let client = reqwest::Client::new();
     let response = client.get(image_url)
         .header(reqwest::header::USER_AGENT, USER_AGENT_VALUE)
