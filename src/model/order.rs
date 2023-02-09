@@ -32,5 +32,5 @@ pub struct BuyData {
 
 #[derive(Deserialize, Debug)]
 pub struct SellData {
-    pub id: String,
+    pub token_id: String,
 }

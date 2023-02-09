@@ -38,7 +38,7 @@ async fn process_order(result: TheResult) {
 
     if is_after {
         info!("Newly listed land detected");
-        let response = fetch_api_response::<Asset>(format!("{}/{}", ASSET_URL, &result.sell.data.id).as_str()).await;
+        let response = fetch_api_response::<Asset>(format!("{}/{}", ASSET_URL, &result.sell.data.token_id).as_str()).await;
         match response {
             Ok(asset) => {
                 let buy = result.buy;
