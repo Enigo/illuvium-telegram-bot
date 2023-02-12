@@ -72,13 +72,14 @@ fn build_message(asset: &Asset, buy: Buy) -> String {
 }
 
 fn get_price(data: BuyData) -> f32 {
-    let index_of_comma = data.quantity.chars().count() - <i32 as TryInto<usize>>::try_into(data.decimals).unwrap();
+    let index_of_comma = data.quantity.chars().count() as i32 - data.decimals;
 
     return match index_of_comma {
+        -1 => ("0.0".to_owned() + &data.quantity).parse().unwrap(),
         0 => ("0.".to_owned() + &data.quantity).parse().unwrap(),
         _ => {
             let mut quantity_clone = data.quantity.clone();
-            quantity_clone.insert(index_of_comma, '.');
+            quantity_clone.insert(index_of_comma as usize, '.');
             quantity_clone.parse().unwrap()
         }
     };
