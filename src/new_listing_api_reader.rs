@@ -7,8 +7,9 @@ use tokio::task;
 use crate::model::{asset::Asset, order::*};
 use crate::telegram_bot_sender;
 
-const ORDERS_URL: &str = "https://api.x.immutable.com/v1/orders?status=active&sell_token_address=0x9e0d99b864e1ac12565125c5a82b59adea5a09cd";
-const ASSET_URL: &str = "https://api.x.immutable.com/v1/assets/0x9e0d99b864e1ac12565125c5a82b59adea5a09cd";
+const ORDERS_URL: &str = "https://api.x.immutable.com/v3/orders?status=active&sell_token_address=0x9e0d99b864e1ac12565125c5a82b59adea5a09cd";
+const ASSET_URL: &str =
+    "https://api.x.immutable.com/v1/assets/0x9e0d99b864e1ac12565125c5a82b59adea5a09cd";
 
 #[tokio::main]
 pub async fn read_orders() {
@@ -38,11 +39,13 @@ async fn process_order(result: TheResult) {
 
     if is_after {
         info!("Newly listed land detected");
-        let response = fetch_api_response::<Asset>(format!("{}/{}", ASSET_URL, &result.sell.data.token_id).as_str()).await;
+        let response = fetch_api_response::<Asset>(
+            format!("{}/{}", ASSET_URL, &result.sell.data.token_id).as_str(),
+        )
+        .await;
         match response {
             Ok(asset) => {
-                let buy = result.buy;
-                telegram_bot_sender::send(&asset, buy).await;
+                telegram_bot_sender::send(asset, result.taker_fees).await;
             }
             Err(e) => {
                 error!("Asset API response cannot be parsed! {}", e)

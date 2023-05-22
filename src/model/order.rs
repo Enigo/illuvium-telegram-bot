@@ -9,7 +9,7 @@ pub struct Order {
 pub struct TheResult {
     pub timestamp: String,
     pub sell: Sell,
-    pub buy: Buy,
+    pub taker_fees: TakerFees,
 }
 
 #[derive(Deserialize, Debug)]
@@ -18,19 +18,13 @@ pub struct Sell {
 }
 
 #[derive(Deserialize, Debug)]
-pub struct Buy {
-    pub data: BuyData,
-    #[serde(rename = "type")]
-    pub the_type: String,
-}
-
-#[derive(Deserialize, Debug)]
-pub struct BuyData {
-    pub decimals: i32,
-    pub quantity: String,
-}
-
-#[derive(Deserialize, Debug)]
 pub struct SellData {
     pub token_id: String,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct TakerFees {
+    pub symbol: String,
+    pub decimals: i32,
+    pub quantity_with_fees: String,
 }

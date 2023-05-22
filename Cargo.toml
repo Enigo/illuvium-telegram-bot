@@ -18,4 +18,5 @@ serde = { version = "1.0.152", features = ["derive"] }
 chrono = "0.4.23"
 teloxide = { version = "0.12.0", features = ["macros"] }
 rand = "0.8.5"
-resvg = "0.28.0"
+resvg = "0.32.0"
+rust_decimal = "1.29.1"
